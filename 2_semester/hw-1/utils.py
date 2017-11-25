@@ -108,3 +108,159 @@ def InitExponentialSmoothing(x, h, Params):
             #else do not nothing
         FORECAST[t+h] = y
     return FORECAST	
+
+def WintersExponentialSmoothing(x, h, Params):
+    T = len(x)
+    alpha = Params['alpha']
+    delta = Params['delta']
+    p = Params['seasonality_period']
+    N = T//p
+    
+    FORECAST = [np.NaN]*(T+h)
+
+    if alpha>1:
+        w.warn('Alpha can not be more than 1')
+        #alpha = 1
+        return FORECAST
+    if alpha<0:
+        w.warn('Alpha can not be less than 0')
+        #alpha = 0
+        return FORECAST
+    if delta>1:
+        w.warn('beta can not be more than 1')
+        #beta = 1
+        return FORECAST
+    if delta<0:
+        w.warn('beta can not be less than 0')
+        #beta = 0
+        return FORECAST
+    
+    l = np.nan # initialize ts level 
+    s = np.zeros(T) # initalize seasonality values (it must be vector of lenth p)
+    A = np.zeros(N)
+    
+    for t in range(T):
+        if not math.isnan(x[t]):
+            if math.isnan(l):
+                l= x[t]
+            if np.all(s == 0):
+                for j in range(N):
+                        A[j] = np.sum([x[p * j + k] for k in range(p)])/p
+                for i in range(p):
+                    s[i] = np.sum([x[p * j + i]/A[j] for j in range(N)])/N
+            
+            if t >= p:
+                l_prev = l
+                l = alpha * (x[t] - s[t - p]) + (1 - alpha) * l_prev # recurrent smoothing of level
+                s[t] = delta * (x[t] - l_prev) + (1 - delta) * s[t - p] # recurrent smoothing of seasonality
+            
+        FORECAST[t + h] = l + s[t - p + 1 + (h - 1) % p]
+    return FORECAST 
+
+def TheilWageExponentialSmoothing(x, h, Params):
+    T = len(x)
+    alpha = Params['alpha']
+    beta = Params['beta']
+    delta = Params['delta']
+    p = Params['seasonality_period']
+    N = T//p
+    
+    FORECAST = [np.NaN]*(T+h)
+
+    if alpha>1:
+        w.warn('Alpha can not be more than 1')
+        #alpha = 1
+        return FORECAST
+    if alpha<0:
+        w.warn('Alpha can not be less than 0')
+        #alpha = 0
+        return FORECAST
+    if delta>1:
+        w.warn('beta can not be more than 1')
+        #beta = 1
+        return FORECAST
+    if delta<0:
+        w.warn('beta can not be less than 0')
+        #beta = 0
+        return FORECAST
+    
+    l = np.nan # initialize ts level 
+    b = np.nan 
+    s = np.zeros(T) # initalize seasonality values (it must be vector of lenth p)
+    A = np.zeros(N)
+    
+    for t in range(T):
+        if not math.isnan(x[t]):
+            if math.isnan(l):
+                l = x[t]
+            if math.isnan(b):
+                b = np.sum([(x[p + i] - x[i])/p for i in range(1, p + 1)])/p
+            if np.all(s == 0):
+                for j in range(N):
+                        A[j] = np.sum([x[p * j + k] for k in range(p)])/p
+                for i in range(p):
+                    s[i] = np.sum([x[p * j + i]/A[j] for j in range(N)])/N
+            
+            if t >=p:
+                l_prev = l
+                b_prev = b
+                l = alpha * (x[t] - s[t - p]) + (1 - alpha) * (l_prev + b_prev) # recurrent smoothing of level
+                b = beta * (l - l_prev) + (1 - beta) * b_prev # reccurent smoothing of trend
+                s[t] = delta * (x[t] - l_prev - b_prev) + (1 - delta) * s[t - p] # recurrent smoothing of seasonality
+            
+        FORECAST[t + h] = l + h * b + s[t - p + 1 + (h - 1) % p]
+    return FORECAST
+
+def MultiplicativeExponentialSmoothing(x, h, Params):
+    T = len(x)
+    alpha = Params['alpha']
+    beta = Params['beta']
+    delta = Params['delta']
+    p = Params['seasonality_period']
+    N = T//p
+    
+    FORECAST = [np.NaN]*(T+h)
+
+    if alpha>1:
+        w.warn('Alpha can not be more than 1')
+        #alpha = 1
+        return FORECAST
+    if alpha<0:
+        w.warn('Alpha can not be less than 0')
+        #alpha = 0
+        return FORECAST
+    if delta>1:
+        w.warn('beta can not be more than 1')
+        #beta = 1
+        return FORECAST
+    if delta<0:
+        w.warn('beta can not be less than 0')
+        #beta = 0
+        return FORECAST
+    
+    l = np.nan # initialize ts level 
+    b = np.nan 
+    s = np.zeros(T) # initalize seasonality values (it must be vector of lenth p)
+    A = np.zeros(N)
+    
+    for t in range(T):
+        if not math.isnan(x[t]):
+            if math.isnan(l):
+                l = x[t]
+            if math.isnan(b):
+                b = np.sum([(x[p + i] - x[i])/p for i in range(1, p + 1)])/p
+            if np.all(s == 0):
+                for j in range(N):
+                        A[j] = np.sum([x[p * j + k] for k in range(p)])/p
+                for i in range(p):
+                    s[i] = np.sum([x[p * j + i]/A[j] for j in range(N)])/N
+            
+            if t >= p:
+                l_prev = l
+                b_prev = b
+                l = alpha * (x[t] / s[t - p]) + (1 - alpha) * (l_prev + b_prev) # recurrent smoothing of level
+                b = beta * (l - l_prev) + (1 - beta) * b_prev # reccurent smoothing of trend
+                s[t] = delta * (x[t] / l) + (1 - delta) * s[t - p] # recurrent smoothing of seasonality
+            
+        FORECAST[t + h] = (l + h * b) * s[t - p + 1 + (h - 1) % p]
+    return FORECAST
